@@ -1,16 +1,136 @@
-# React + Vite
+# Yarn Cost Calculator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A responsive React + Vite web application that helps weaving teams calculate yarn consumption, cost per meter/pick, and profitability. The app supports multiple weft patterns, GST inclusive costing, and optional Supabase-backed authentication so users can store yarn qualities and calculation snapshots.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Warp & weft calculator with configurable denier/count, extra charges, and shortage allowances
+- Multi-weft support with ratio-based pick distribution
+- Automatic warp/weft weight per meter & per 100 m, cost per meter, cost per pick, and GST-inclusive totals
+- Optional sale price to track profit per meter and margin %
+- Supabase authentication (email + password) with per-user storage for:
+  - Reusable yarn qualities
+  - Calculation snapshots including the computed totals
+- Public qualities/calculations so unauthenticated users can browse shared templates
+- Zustand for state management, Tailwind CSS for styling, and fully responsive layouts for desktop, tablet, and mobile
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+yarn-cost-app/
+├── src/
+│   ├── components/
+│   │   ├── auth/         # Authentication panel
+│   │   ├── calculator/   # Calculator form + result panels
+│   │   └── saved/        # Supabase-powered saves list
+│   ├── contexts/         # Auth provider (Supabase session handling)
+│   ├── hooks/            # Reusable hooks (e.g., useAuth)
+│   ├── lib/              # Supabase client + data service
+│   ├── store/            # Zustand calculator store
+│   ├── utils/            # Calculation helpers & formatting
+│   └── styles.css        # Tailwind entry point
+```
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment variables
+
+Copy `.env.example` to `.env` (create it if it does not exist yet) and add your Supabase keys:
+
+```
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+If these values are missing the app still works locally, but sign-in and persistence are disabled.
+
+### 3. Supabase schema
+
+Create the following tables (SQL) inside Supabase:
+
+```sql
+create table public.qualities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  name text,
+  warp jsonb,
+  weft_config jsonb,
+  wefts jsonb,
+  additional jsonb,
+  pricing jsonb,
+  notes text,
+  is_public boolean default false,
+  created_at timestamptz default now()
+);
+
+create table public.calculations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users not null,
+  quality_name text,
+  inputs jsonb,
+  results jsonb,
+  is_public boolean default false,
+  created_at timestamptz default now()
+);
+
+-- Allow public read access and authenticated CRUD on owned records
+alter table public.qualities enable row level security;
+alter table public.calculations enable row level security;
+
+create policy "Public qualities" on public.qualities
+  for select using (is_public = true or auth.uid() = user_id);
+
+create policy "Manage own qualities" on public.qualities
+  for all using (auth.uid() = user_id);
+
+create policy "Public calculations" on public.calculations
+  for select using (is_public = true or auth.uid() = user_id);
+
+create policy "Manage own calculations" on public.calculations
+  for all using (auth.uid() = user_id);
+```
+
+### 4. Run locally
+
+```bash
+npm run dev
+```
+
+### 5. Build for production
+
+```bash
+npm run build
+npm run preview
+```
+
+## Calculations Reference
+
+- Warp yarn per meter (kg) = `(total ends × denier) / 9,000,000`
+- Weft yarn per meter (kg) = `((effective picks × denier × panno inches) / 9,000,000) × (1 + shortage %)`
+- Cost per meter = `yarn per meter × (rate + extra charges)`
+- Cost per pick = `cost before GST / (picks per inch × 39.3701)`
+- GST = `cost before GST × 5%`
+- Profit per meter = `sale price − cost before GST`
+- Margin % = `(profit per meter / cost before GST) × 100`
+
+## Deploying to Vercel
+
+1. Push this repository to GitHub/GitLab/Bitbucket.
+2. Create a new project in Vercel and import the repo.
+3. Set the **Build Command** to `npm run build` and **Output Directory** to `dist` (Vercel detects Vite automatically).
+4. Add the environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under *Settings → Environment Variables* for both Preview and Production.
+5. Trigger a deploy. Once live, invite teammates from Supabase → *Authentication* so they can sign in.
+
+## Next Steps
+
+- Add input presets tailored to specific loom widths or fabric types
+- Provide CSV export for costing breakdowns
+- Integrate unit tests for critical calculation utilities
+
+Happy weaving! 🧵
