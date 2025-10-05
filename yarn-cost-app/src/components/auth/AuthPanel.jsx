@@ -1,8 +1,8 @@
 import { useState } from "react"
 import useAuth from "../../hooks/useAuth"
 
-const AuthPanel = () => {
-  const { user, loading, error, initialising, signIn, signUp, signOut, supabaseReady } = useAuth()
+const AuthPanel = ({ onAuthenticated }) => {
+  const { user, loading, error, initialising, signIn, signUp, supabaseReady } = useAuth()
   const [mode, setMode] = useState("signin")
   const [formState, setFormState] = useState({ email: "", password: "" })
   const [status, setStatus] = useState("")
@@ -26,12 +26,15 @@ const AuthPanel = () => {
     if (!authError) {
       setStatus(mode === "signin" ? "Signed in" : "Check inbox to confirm account")
       setFormState({ email: "", password: "" })
+      if (mode === "signin") {
+        onAuthenticated?.()
+      }
     }
   }
 
   if (!supabaseReady) {
     return (
-      <div className="flex max-w-xs flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
+      <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700">
         <p className="font-semibold text-amber-800">Supabase not configured</p>
         <p>Set VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY in .env to enable sign-in and saved records.</p>
       </div>
@@ -40,7 +43,7 @@ const AuthPanel = () => {
 
   if (initialising) {
     return (
-      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-500">
         Loading…
       </div>
     )
@@ -48,19 +51,8 @@ const AuthPanel = () => {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
-        <div className="text-left">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Signed in</p>
-          <p className="text-sm font-semibold text-slate-700">{user.email}</p>
-        </div>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={signOut}
-          className="rounded-full border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
-        >
-          Sign out
-        </button>
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm text-emerald-700">
+        <p className="font-semibold">You are already signed in as {user.email}</p>
       </div>
     )
   }
@@ -68,7 +60,7 @@ const AuthPanel = () => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-700">

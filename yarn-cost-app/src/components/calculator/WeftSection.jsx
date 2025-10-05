@@ -24,6 +24,17 @@ const WeftSection = () => {
     updateWeft(id, { rateMode: mode })
   }
 
+  const unitOptions = [
+    { value: "denier", label: "Denier (D)", helper: "Weight-based thickness" },
+    { value: "count", label: "Count (Ne)", helper: "Cotton system" },
+  ]
+
+  const rateOptions = [
+    { value: "final", label: "Final rate", helper: "Use entered rate" },
+    { value: "plus", label: "+ GST", helper: "Add 5% GST" },
+    { value: "plusplus", label: "+ ₹ + GST", helper: "Add flat ₹ then GST" },
+  ]
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur">
       <header className="mb-3 flex flex-col gap-1">
@@ -113,38 +124,38 @@ const WeftSection = () => {
               </label>
               <div className="flex flex-col gap-1 text-xs font-medium text-slate-600">
                 Denier / count
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-2">
                   <input
                     type="number"
                     min="0"
                     value={weft.denier}
                     onChange={handleWeftChange(weft.id, "denier")}
                     placeholder="100"
-                    className="min-w-[120px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
-                  <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] font-semibold text-slate-600 shadow-inner">
-                    <button
-                      type="button"
-                      onClick={() => setWeftUnit(weft.id, "denier")}
-                      className={`rounded-full px-2.5 py-1 transition ${
-                        weft.denierUnit === "denier"
-                          ? "bg-white text-indigo-600 shadow"
-                          : "hover:text-indigo-500"
-                      }`}
-                    >
-                      Denier
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWeftUnit(weft.id, "count")}
-                      className={`rounded-full px-2.5 py-1 transition ${
-                        weft.denierUnit === "count"
-                          ? "bg-white text-indigo-600 shadow"
-                          : "hover:text-indigo-500"
-                      }`}
-                    >
-                      Count
-                    </button>
+                  <div className="grid gap-2">
+                    {unitOptions.map((option) => {
+                      const active = weft.denierUnit === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setWeftUnit(weft.id, option.value)}
+                          aria-pressed={active}
+                          className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left transition ${
+                            active
+                              ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200"
+                          }`}
+                        >
+                          <span>
+                            <span className="block text-sm font-semibold">{option.label}</span>
+                            <span className="text-[11px] text-slate-500">{option.helper}</span>
+                          </span>
+                          <span className="text-base">{active ? "✓" : ""}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -161,29 +172,33 @@ const WeftSection = () => {
               </label>
               <div className="flex flex-col gap-2 text-xs font-semibold text-slate-600 sm:col-span-2 lg:col-span-2">
                 <span>Rate mode</span>
-                <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 text-[11px] text-slate-600 shadow-inner">
-                  {[
-                    { value: "final", label: "Final" },
-                    { value: "plus", label: "+ GST" },
-                    { value: "plusplus", label: "+₹ + GST" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setRateMode(weft.id, option.value)}
-                      className={`rounded-full px-3 py-1 transition ${
-                        weft.rateMode === option.value
-                          ? "bg-white text-indigo-600 shadow"
-                          : "hover:text-indigo-500"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {rateOptions.map((option) => {
+                    const active = weft.rateMode === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setRateMode(weft.id, option.value)}
+                        aria-pressed={active}
+                        className={`flex h-full flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+                          active
+                            ? "border-indigo-400 bg-indigo-50 text-indigo-700 shadow"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200"
+                        }`}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{option.label}</span>
+                          <span className="text-base">{active ? "✓" : ""}</span>
+                        </span>
+                        <span className="mt-1 text-[11px] text-slate-500">{option.helper}</span>
+                      </button>
+                    )
+                  })}
                 </div>
                 {weft.rateMode === "plusplus" && (
                   <label className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">
-                    <span>Extra (₹)</span>
+                    <span>Extra (₹ per kg)</span>
                     <input
                       type="number"
                       min="0"

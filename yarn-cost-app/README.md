@@ -8,9 +8,13 @@ A responsive React + Vite web application that helps weaving teams calculate yar
 - Multi-weft support with ratio-based pick distribution
 - Automatic warp/weft weight per meter & per 100 m, cost per meter, cost per pick, and GST-inclusive totals
 - Optional sale price to track profit per meter and margin %
+- Rate shortcuts: enter the base ₹/kg once, then choose **Final**, **+ GST**, or **+₹ + GST** (adds your chosen flat ₹ before applying 5% GST)
+- Business operations workspace covering sales, payments, exposure dashboard, and reporting (foundation phase)
+
 - Supabase authentication (email + password) with per-user storage for:
   - Reusable yarn qualities
   - Calculation snapshots including the computed totals
+  - Shared presets curated by super admins
 - Public qualities/calculations so unauthenticated users can browse shared templates
 - Zustand for state management, Tailwind CSS for styling, and fully responsive layouts for desktop, tablet, and mobile
 
@@ -46,6 +50,11 @@ Copy `.env.example` to `.env` (create it if it does not exist yet) and add your 
 ```
 VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
+# Optional: override table names if you used a different naming convention
+# VITE_SUPABASE_QUALITIES_TABLE=qualities
+# VITE_SUPABASE_CALCULATIONS_TABLE=calculations
+# Set comma separated emails that should get super-admin access in the app
+# VITE_SUPER_ADMINS=owner@example.com
 ```
 
 If these values are missing the app still works locally, but sign-in and persistence are disabled.
@@ -134,3 +143,49 @@ npm run preview
 - Integrate unit tests for critical calculation utilities
 
 Happy weaving! 🧵
+
+
+## Supabase setup
+
+1. Create the `qualities` and `calculations` tables (or adjust the env overrides) using the SQL below:
+
+```sql
+create table if not exists public.qualities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade,
+  name text,
+  warp jsonb,
+  weft_config jsonb,
+  wefts jsonb,
+  additional jsonb,
+  pricing jsonb,
+  notes text,
+  is_public boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.calculations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade,
+  quality_name text,
+  inputs jsonb,
+  results jsonb,
+  is_public boolean default false,
+  created_at timestamptz default now()
+);
+```
+
+2. Enable Row Level Security and policies to allow owners (and public reads for shared presets).
+
+3. Seed test users (optional) by running:
+
+```bash
+cd yarn-cost-app
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key node scripts/createTestUsers.mjs
+```
+
+The script creates:
+- `admin@ambrox.in` / `Admin@123` (super admin)
+- `user@ambrox.in` / `User@123`
+
+Remember to keep the service role key out of version control.

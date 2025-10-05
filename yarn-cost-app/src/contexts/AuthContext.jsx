@@ -4,6 +4,13 @@ import supabase, { isSupabaseConfigured } from "../lib/supabaseClient"
 const AuthContext = createContext(undefined)
 
 const missingConfigError = new Error("Supabase credentials are not configured")
+const superAdminEmails = (import.meta.env.VITE_SUPER_ADMINS ?? "")
+  .split(",")
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean)
+
+const isSuperAdminEmail = (email) =>
+  Boolean(email && superAdminEmails.includes(String(email).toLowerCase()))
 
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null)
@@ -11,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [initialising, setInitialising] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -27,6 +35,7 @@ export const AuthProvider = ({ children }) => {
         if (sessionError) throw sessionError
         setSession(data?.session ?? null)
         setUser(data?.session?.user ?? null)
+        setIsSuperAdmin(isSuperAdminEmail(data?.session?.user?.email))
       } catch (err) {
         console.error("Failed to load Supabase session", err)
         setError(err)
@@ -40,6 +49,7 @@ export const AuthProvider = ({ children }) => {
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setUser(nextSession?.user ?? null)
+      setIsSuperAdmin(isSuperAdminEmail(nextSession?.user?.email))
     })
 
     return () => {
@@ -65,6 +75,7 @@ export const AuthProvider = ({ children }) => {
       if (authError) throw authError
       setSession(data.session)
       setUser(data.user)
+      setIsSuperAdmin(isSuperAdminEmail(data.user?.email))
       return { data }
     } catch (err) {
       setError(err)
@@ -99,6 +110,7 @@ export const AuthProvider = ({ children }) => {
       if (signOutError) throw signOutError
       setSession(null)
       setUser(null)
+      setIsSuperAdmin(false)
       return {}
     } catch (err) {
       setError(err)
@@ -118,6 +130,7 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signOut,
     supabaseReady: isSupabaseConfigured,
+    isSuperAdmin,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
