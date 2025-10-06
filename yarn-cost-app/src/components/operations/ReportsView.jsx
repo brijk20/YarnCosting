@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { calculateInterest } from "../../store/operationsStore"
+import { calculateInterestDue } from "../../store/operationsStore"
 
 const currency = (value) => `₹${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
 
@@ -50,7 +50,7 @@ const ReportsView = ({ sales }) => {
         acc.totalSales += sale.amount
         acc.totalPaid += sale.paidAmount
         acc.outstanding += sale.balance
-        acc.interest += calculateInterest(sale, new Date())
+        acc.interest += calculateInterestDue(sale, new Date())
         return acc
       },
       { totalSales: 0, totalPaid: 0, outstanding: 0, interest: 0 },
@@ -72,7 +72,7 @@ const ReportsView = ({ sales }) => {
       record.totalSales += sale.amount
       record.totalPaid += sale.paidAmount
       record.outstanding += sale.balance
-      record.interest += calculateInterest(sale, new Date())
+      record.interest += calculateInterestDue(sale, new Date())
       return map
     }, new Map())
 

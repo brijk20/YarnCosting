@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react"
-import useOperationsStore, { calculateInterest } from "../../store/operationsStore"
+import { calculateInterestDue, computePartySummary } from "../../store/operationsStore"
 
 const currency = (value) => `₹${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
 
-const OperationsDashboard = ({ parties, summary }) => {
+const OperationsDashboard = ({ parties, summary, sales }) => {
   const [selectedParty, setSelectedParty] = useState("")
-  const partySummary = useOperationsStore((state) => state.getPartySummary(selectedParty))
-  const sales = useOperationsStore((state) => state.sales)
 
   const overdueSales = useMemo(
     () =>
@@ -17,6 +15,8 @@ const OperationsDashboard = ({ parties, summary }) => {
       }),
     [sales],
   )
+
+  const partySummary = useMemo(() => computePartySummary(sales, selectedParty), [sales, selectedParty])
 
   return (
     <div className="space-y-8">
@@ -55,6 +55,9 @@ const OperationsDashboard = ({ parties, summary }) => {
             <SummaryTile label="Interest due" value={currency(partySummary.interest)} accent="emerald" />
             <SummaryTile label="Overdue invoices" value={partySummary.overdue} />
             <SummaryTile label="Total transactions" value={partySummary.transactions} />
+            <SummaryTile label="GST collected" value={currency(partySummary.gst)} />
+            <SummaryTile label="Taxable turnover" value={currency(partySummary.taxable)} />
+            <SummaryTile label="Cost of goods" value={currency(partySummary.cost)} />
           </div>
         ) : (
           <p className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-5 text-sm text-slate-500">
@@ -80,7 +83,7 @@ const OperationsDashboard = ({ parties, summary }) => {
               </thead>
               <tbody>
                 {overdueSales.map((sale) => {
-                  const interest = calculateInterest(sale)
+                  const interest = calculateInterestDue(sale)
                   const overdueDays = Math.max(0, Math.floor((Date.now() - new Date(sale.dueDate)) / (1000 * 60 * 60 * 24)))
                   return (
                     <tr key={sale.id} className="border-b border-slate-100 text-slate-700">

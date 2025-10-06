@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import useAuth from "../../hooks/useAuth"
 import useCalculatorStore from "../../store/calculatorStore"
-import { fetchQualities } from "../../lib/dataService"
+import { loadPresets } from "../../lib/presetStorage"
 
 const staticPresets = [
   {
@@ -195,39 +194,30 @@ const staticPresets = [
 const QuickPresetSection = () => {
   const loadFromSaved = useCalculatorStore((state) => state.loadFromSaved)
   const resetCalculator = useCalculatorStore((state) => state.resetCalculator)
-  const { supabaseReady } = useAuth()
 
-  const [publicPresets, setPublicPresets] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [recentPresets, setRecentPresets] = useState(() => loadPresets().slice(0, 3))
 
   useEffect(() => {
-    let abort = false
+    const handler = () => setRecentPresets(loadPresets().slice(0, 3))
+    window.addEventListener("yarn-presets:updated", handler)
+    return () => window.removeEventListener("yarn-presets:updated", handler)
+  }, [])
 
-    const load = async () => {
-      if (!supabaseReady) {
-        setPublicPresets([])
-        return
-      }
+  const library = useMemo(() => {
+    const personal = recentPresets.map((preset) => ({
+      key: `local-${preset.id}`,
+      label: preset.name,
+      notes: `Saved ${new Date(preset.updatedAt).toLocaleDateString("en-IN")}`,
+      payload: preset.payload,
+      origin: "local",
+    }))
+    const builtin = staticPresets.map((preset) => ({ ...preset, origin: "default" }))
+    return [...personal, ...builtin]
+  }, [recentPresets])
 
-      setLoading(true)
-      const { data, error } = await fetchQualities({})
-      if (abort) return
-
-      if (error) {
-        console.warn("Unable to fetch shared qualities", error)
-        setPublicPresets([])
-      } else {
-        setPublicPresets((data ?? []).filter((row) => row.is_public))
-      }
-      setLoading(false)
-    }
-
-    load()
-
-    return () => {
-      abort = true
-    }
-  }, [supabaseReady])
+  if (!library.length) {
+    return null
+  }
 
   const handleSelect = (presetPayload) => {
     if (!presetPayload) return
@@ -235,48 +225,20 @@ const QuickPresetSection = () => {
     loadFromSaved(presetPayload)
   }
 
-  const library = useMemo(() => {
-    const builtin = staticPresets.map((preset) => ({
-      key: `builtin-${preset.key}`,
-      label: preset.label,
-      notes: preset.notes,
-      payload: preset.payload,
-      origin: "default",
-    }))
-
-    const shared = publicPresets.map((row) => ({
-      key: row.id,
-      label: row.name || "Shared quality",
-      notes: row.notes || "Published by super admin",
-      payload: {
-        qualityName: row.name ?? "",
-        warp: row.warp ?? {},
-        weftConfig: row.weft_config ?? {},
-        wefts: row.wefts ?? [],
-        additional: row.additional ?? {},
-        pricing: row.pricing ?? {},
-        notes: row.notes ?? "",
-      },
-      origin: "shared",
-    }))
-
-    return [...builtin, ...shared]
-  }, [publicPresets])
-
-  if (!library.length && !loading) {
-    return null
-  }
-
   return (
     <section className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-indigo-100/40 p-5 shadow-sm">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Quick select quality</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Quick load</h2>
           <p className="text-xs text-slate-500">
-            Tap a preset to prefill warp, weft, and costing inputs (rates stay editable).
+            Apply a preset to prefill warp, weft, and costing inputs. Rates stay editable.
           </p>
         </div>
-        {loading ? <span className="text-[11px] text-slate-400">Loading shared presets…</span> : null}
+        {recentPresets.length ? (
+          <span className="rounded-full bg-indigo-600/10 px-3 py-1 text-[11px] font-semibold text-indigo-600">
+            {recentPresets.length} saved
+          </span>
+        ) : null}
       </header>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {library.map((preset) => (
@@ -285,9 +247,9 @@ const QuickPresetSection = () => {
             type="button"
             onClick={() => handleSelect(preset.payload)}
             className={`group flex h-full flex-col justify-between rounded-2xl border px-4 py-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-              preset.origin === "shared"
-                ? "border-emerald-100 bg-white/80 hover:border-emerald-200 hover:shadow-emerald-200/40"
-                : "border-indigo-100 bg-white/80 hover:border-indigo-200 hover:shadow-indigo-200/40"
+              preset.origin === "default"
+                ? "border-indigo-100 bg-white/80 hover:border-indigo-200 hover:shadow-indigo-200/40"
+                : "border-emerald-100 bg-white/80 hover:border-emerald-200 hover:shadow-emerald-200/40"
             }`}
           >
             <span>
@@ -296,7 +258,7 @@ const QuickPresetSection = () => {
             </span>
             <span
               className={`mt-3 inline-flex items-center gap-1 text-[11px] font-semibold ${
-                preset.origin === "shared" ? "text-emerald-500 group-hover:text-emerald-600" : "text-indigo-500 group-hover:text-indigo-600"
+                preset.origin === "default" ? "text-indigo-500 group-hover:text-indigo-600" : "text-emerald-500 group-hover:text-emerald-600"
               }`}
             >
               Use preset
